@@ -1,0 +1,11 @@
+html{
+  height: 100%;
+}
+body{
+  /* 不允许用户选择 */
+  /* user-select: none; */
+  -webkit-app-region: drag;
+}
+input{
+  -webkit-app-region: drag;
+}
