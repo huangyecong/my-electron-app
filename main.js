@@ -3,8 +3,9 @@
 //使用 CommonJS 语法导入了两个 Electron 模块：
 //app它着您应用程序的事件生命周期。BrowserWindow它负责创建和管理应用窗口。
 
-const { app, BrowserWindow } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog } = require('electron')
 // const WinState = require('electron-win-state').default //保持窗口的状态，比如上次你把窗口拉动到800*800，那么下次打开还是800*800
+const path = require('node:path')
 
 /*这里需要注意，
  *WinState的defaultWidth、defaultHeight会和BrowserWindow中的width、height会有冲突，
@@ -19,14 +20,18 @@ const createWindow = () => {
   // 1、创建一个父窗口1
   const win = new BrowserWindow({
     // ...winState.winOptions,
-    width: 1000,// 窗口的宽度
-    height: 800,// 窗口的高度
+    width: 1000, // 窗口的宽度
+    height: 800, // 窗口的高度
     x: 100, // 窗口距离x轴的距离
     y: 100, // 窗口距离y轴的距离
     // frame:false,// 不显示窗口菜单栏目
-    show: false, //显示窗口 和ready-to-show 配合使用
+    show: false, //资源加载完之后优雅显示窗口 和ready-to-show 配合使用
     // titleBarStyle: 'hidden',
     backgroundColor: '#653579',
+    // 为了将脚本附在渲染器上，在BrowserWindow构造器中使用webPreferences.preload传入脚本的路径
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+    },
   })
 
   win.loadFile('index.html')
@@ -49,7 +54,34 @@ const createWindow = () => {
     console.log('click right menu~')
     console.log('params=', params)
     // 往页面里面注入一个js方法（右键选择页面文本时，弹窗显示文本）
-    wc.executeJavaScript(console.log(`selected text is : ${params.selectionText}`))
+    // wc.executeJavaScript(console.log(`selected text is : ${params.selectionText}`))
+
+    // 打开文件窗口
+    // dialog.showOpenDialog({
+    //   buttonLabel:'选择',
+    //   defaultPath:app.getPath('desktop'),// 可以自定义打开路径
+    //   properties:['multiSelections','createDirectory','openFile','openDirectory']// 文件是否可以多选、创建、打开文件、打开文件夹
+    // }).then((result)=>{
+    //   console.log(result.filePaths)
+    // })
+
+    // 存储资源到本地
+    // dialog.showSaveDialog({}).then((result)=>{
+    //   console.log(result)
+    // })
+
+    // 选择弹窗
+    const answers = ['Yes', 'No', 'Maybe']
+    dialog
+      .showMessageBox({
+        title: 'Message Box',
+        message: 'Please select an option',
+        detail: 'Message detail',
+        buttons: answers,
+      })
+      .then(({ response }) => {
+        console.log(`User selected:${answers[response]}`)
+      })
   }) //监听 右键上下文
 
   // 用户打开应用就有页面
@@ -81,6 +113,8 @@ app.on('window-all-closed', () => {
 })
 
 app.whenReady().then(() => {
+  // 在主进程中设置你的 handle 监听器。 我们在 HTML 文件加载之前完成了这些，所以才能保证在你从渲染器发送 invoke 调用之前处理程序能够准备就绪。
+  ipcMain.handle('ping',()=>'pong')
   createWindow()
 
   // 如果没有窗口打开则打开一个窗口 (macOS)
